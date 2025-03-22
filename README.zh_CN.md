@@ -1,3 +1,4 @@
+### 修改说明
 在官方原版5.15.0基础上增加了手机扫码播放功能，同时将加速播放调到最高10倍速度(需要快捷键调节)
 1.编译依赖(有可能统计的不全面，如果编译报错的话可以直接问deepseek或者gpt，都可以解决)
 sudo apt build-dep deepin-movie #如果报错，可以vim /etc/apt/sources.list,将第二行注释去掉，然后sodo apt update 然后重新装
