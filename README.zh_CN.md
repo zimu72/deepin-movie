@@ -2,6 +2,7 @@
 全程通过AI修改的，在官方原版5.15.0基础上增加了手机扫码播放功能，同时将加速播放调到最高10倍速度(需要快捷键调节)
 # 1.编译依赖(有可能统计的不全面，如果编译报错的话可以直接问deepseek或者gpt，都可以解决)
 sudo apt build-dep deepin-movie #如果报错，可以vim /etc/apt/sources.list,将第二行注释去掉，然后sodo apt update 然后重新装
+
 sudo apt install debhelper   cmake   pkg-config   \
                 libqt5svg5-dev   qtmultimedia5-dev   qttools5-dev  \
                 libqt5x11extras5-dev   libdtkcore5-bin   libdtkwidget-dev  \
@@ -14,24 +15,35 @@ sudo apt install debhelper   cmake   pkg-config   \
                 libpulse-dev   libdvdnav-dev   libgsettings-qt-dev  \
                 libmpris-qt5-dev   libdbusextended-qt5-dev   libva-dev  \
                 libgstreamer-plugins-base1.0-dev   libgstreamer1.0-dev  \
-			    qttools5-dev-tools  libgtest-dev googletest \
-				libqrencode-dev libgmock-dev g++   qt5-default
+		qttools5-dev-tools  libgtest-dev googletest \
+		libqrencode-dev libgmock-dev g++   qt5-default
 
 # 2. 安装构建过程
 cd deepin-movie-reborn
+
 mkdir Build
+
 cd Build
+
 cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=/usr ..
+
 make
+
 sudo make install
+
 
 # 3.常见报错解决
 1.报错：缺翻译文件:
+
 解决方法:去translations文件夹下，执行lrelease  deepin-movie_zh_CN.ts  -qm deepin-movie_zh_CN.qm ，然后移到对应目录下即可
 
+
 2.报错：“Settings schema 'com.deepin.deepin-movie' is not installed”
+
 解决方法：	进入src目录，然后sudo cp libdmr/com.deepin.deepin-movie.gschema.xml /usr/share/glib-2.0/schemas/
+
  	        然后sudo glib-compile-schemas /usr/share/glib-2.0/schemas/
+	  
 
 下面是官方的说明
 ### Deepin movie
