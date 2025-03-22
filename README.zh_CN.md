@@ -1,10 +1,10 @@
 ### Deepin movie
 
-Deepin Movie is a full-featured video player developed by Deepin Technology, supporting playing local and streaming media in multiple video formats.
+影院是深度技术开发的全功能视频播放器，支持以多种视频格式播放本地和流媒体。
 
-### Dependencies
+### 依赖
 
-### Build dependencies
+### 编译依赖
 
 _The **master** branch is current development branch, build dependencies may changes without update README.md, refer to `./debian/control` for a working build depends list_
 
@@ -42,9 +42,9 @@ _The **master** branch is current development branch, build dependencies may cha
   - libqt5sql5-sqlite
   - qtmultimedia5-dev
 
-## Installation 
+## 安装 
 
-### Build from source code
+### 构建过程
 
 1. Make sure you have installed all dependencies.
 
@@ -73,16 +73,16 @@ $ sudo make install
 
 When install complete, the executable binary file is placed into `/usr/bin/deepin-movie`.
 
-## Usage
+## 用途
 
 Execute `deepin-movie`
 
-## Documentations
+## 文档
 
  - [Development Documentation](https://linuxdeepin.github.io/deepin-movie/)
  - [User Documentation](https://wikidev.uniontech.com/index.php?title=%E5%BD%B1%E9%99%A2) | [用户文档](https://wikidev.uniontech.com/index.php?title=%E5%BD%B1%E9%99%A2)
 
-## Getting help
+## 帮助
 
 * [Official Forum](https://bbs.uniontech.com/)
  * [Developer Center](https://github.com/linuxdeepin/developer-center)
@@ -90,7 +90,7 @@ Execute `deepin-movie`
  * [IRC Channel](https://webchat.freenode.net/?channels=deepin)
  * [Wiki](https://wikidev.uniontech.com/)
 
-## Getting involved
+## 贡献指南
 
 * We encourage you to report issues and contribute changes
 
@@ -98,6 +98,6 @@ Execute `deepin-movie`
    - [开发者代码贡献指南](https://github.com/linuxdeepin/developer-center/wiki/Contribution-Guidelines-for-Developers) (中文)
    - [Translate for your language on Transifex](https://www.transifex.com/linuxdeepin/deepin-movie/)
 
-## License
+## 开源许可证
 
-Deepin Movie is licensed under [GPL-3.0-or-later](LICENSE)
+Deepin Movie 根据 [GPL-3.0-or-later]（许可证）获得许可.

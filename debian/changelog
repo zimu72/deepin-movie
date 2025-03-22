@@ -1,0 +1,219 @@
+deepin-movie-reborn (5.15.0) unstable; urgency=medium
+
+  * New version 5.15.0
+
+ -- xiepengfei <xiepengfei@uniontech.com>  Thu, 15 Aug 2024 18:05:41 +0800
+
+deepin-movie-reborn (5.10.51) unstable; urgency=medium
+
+  * feat: Added new settings for movie
+
+ -- xiepengfei <xiepengfei@uniontech.com>  Wed, 02 Jul 2024 15:48:47 +0800
+
+deepin-movie-reborn (5.10.50) unstable; urgency=medium
+
+  * fix: Volume greater than 100 cannot be exited.(Bug: 251965)
+
+ -- xiepengfei <xiepengfei@uniontech.com>  Fri, 19 Apr 2024 15:41:33 +0800
+
+deepin-movie-reborn (5.10.49) unstable; urgency=medium
+
+  * fix: Minimode display error after showfullscreen().(Bug: 249413)
+
+ -- renbin <renbin@uniontech.com>  Tue, 16 Apr 2024 16:41:52 +0800
+
+deepin-movie-reborn (5.10.48) unstable; urgency=medium
+
+  * New version 5.10.48
+  * fix: yuv444p format uses software decoding (Bug: 247589)
+  * fix: sw jmgpu uses hardware decoding (Bug: 240393)
+  * fix: cropped rounded corners exist during full-screen playback (Bug: 247735)
+  * fix: pause icon still displayed when minimized (Bug: 247791)
+  * fix: HW device hardware decoding detection adjustment (Bug: 249087)
+  * fix: Adjust device detection strategy (Bug: 249087)
+
+ -- renbin <renbin@uniontech.com>  Wed, 03 Apr 2024 14:56:28 +0800
+
+deepin-movie-reborn (5.10.47) unstable; urgency=medium
+
+  * New version 5.10.47
+
+ -- renbin <renbin@uniontech.com>  Wed, 27 Mar 2024 15:51:03 +0800
+
+deepin-movie-reborn (5.10.46) unstable; urgency=medium
+
+  * New version 5.10.46
+
+ -- muyuankai <muyuankai@uniontech.com>  Wed, 13 Mar 2024 14:53:21 +0800
+
+deepin-movie-reborn (5.10.45) unstable; urgency=medium
+
+  * New version 5.10.45
+
+ -- xiepengfei <xiepengfei@uniontech.com>  Mar, 01 Fri 2024 14:25:15 +0800
+
+deepin-movie-reborn (5.10.44) unstable; urgency=medium
+
+  * New version 5.10.44
+  * fix: Crash when switching mini mode on Wayland.(Bug: 241865)
+
+ -- renbin <renbin@uniontech.com>  Mon, 05 Feb 2024 13:50:00 +0800
+
+deepin-movie-reborn (5.10.43) unstable; urgency=medium
+
+  * New version 5.10.43
+
+ -- renbin <renbin@uniontech.com>  Web, 01 Feb 2024 14:02:52 +0800
+
+deepin-movie-reborn (5.10.42) unstable; urgency=medium
+
+  * New version 5.10.42
+  * fix: Widget flickering when switching between
+         maximized/full screen.(Bug: 239775)
+
+ -- renbin <renbin@uniontech.com>  Fri, 19 Jan 2024 11:13:02 +0800
+
+deepin-movie-reborn (5.10.41) unstable; urgency=medium
+
+  * New version 5.10.41
+  * fix: Playback HEVC black screen on some devices.(Bug: 234565)
+
+ -- renbin <renbin@uniontech.com>  Tue, 09 Jan 2024 21:48:27 +0800
+
+deepin-movie-reborn (5.10.40) unstable; urgency=medium
+
+  * NNew version 5.10.40.
+
+ -- muyuankai <muyuankai@uniontech.com>  Fri, 05 Jan 2024 10:07:56 +0800
+
+deepin-movie-reborn (5.10.39) unstable; urgency=medium
+
+  * NNew version 5.10.39.
+
+ -- muyuankai <muyuankai@uniontech.com>  Fri, 22 Dec 2023 10:39:00 +0800
+
+deepin-movie-reborn (5.10.38) unstable; urgency=medium
+
+  * NNew version 5.10.38.
+
+ -- muyuankai <muyuankai@uniontech.com>  Thu, 14 Dec 2023 13:31:33 +0800
+
+deepin-movie-reborn (5.10.37) unstable; urgency=medium
+
+  * NNew version 5.10.37.
+
+ -- muyuankai <muyuankai@uniontech.com>  Mon, 27 Nov 2023 10:17:45 +0800
+
+deepin-movie-reborn (5.10.36) unstable; urgency=medium
+
+  * New version 5.10.36.
+
+ -- liuqingfu <liuqingfu@uniontech.com>  Fri, 03 Nov 2023 15:11:38 +0800
+
+deepin-movie-reborn (5.10.35) unstable; urgency=medium
+
+  * New version 5.10.35.
+
+ -- xiepengfei <xiepengfei@uniontech.com>  Tues, 17 Oct 2023 10:15:17 +0800
+
+deepin-movie-reborn (5.10.34) unstable; urgency=medium
+
+  * New version 5.10.34.
+
+ -- xiepengfei <xiepengfei@uniontech.com>  Fri, 13 Oct 2023 11:46:21 +0800
+
+deepin-movie-reborn (5.10.33) unstable; urgency=medium
+
+  * New version 5.10.33.
+
+ -- xiepengfei <xiepengfei@uniontech.com>  Thu, 31 Aug 2023 16:15:39 +0800
+
+deepin-movie-reborn (5.10.32) unstable; urgency=medium
+
+  * New version 5.10.32.
+
+ -- xiepengfei <xiepengfei@uniontech.com>  Fri, 04 Aug 2023 11:22:46 +0800
+
+deepin-movie-reborn (5.10.31) unstable; urgency=medium
+
+  * New version 5.10.31.
+
+ -- xiepengfei <xiepengfei@uniontech.com>  Thu, 20 Jul 2023 10:10:21 +0800
+
+deepin-movie-reborn (5.10.30) unstable; urgency=medium
+
+  * New version 5.10.30.
+
+ -- xiepengfei <xiepengfei@uniontech.com>  Web, 19 Jul 2023 11:01:13 +0800
+
+deepin-movie-reborn (5.10.29) unstable; urgency=medium
+
+  * New version 5.10.29.
+
+ -- xiepengfei <xiepengfei@uniontech.com>  Web, 12 Jul 2023 14:20:56 +0800
+
+deepin-movie-reborn (5.10.28) unstable; urgency=medium
+
+  * New version 5.10.28.
+
+ -- muyuankai <muyuankai@uniontech.com>  Web, 07 Jun 2023 11:42:45 +0800
+
+deepin-movie-reborn (5.10.27) unstable; urgency=medium
+
+  * New version 5.10.27.
+
+ -- muyuankai <muyuankai@uniontech.com>  Mon, 08 May 2023 15:50:21 +0800
+
+deepin-movie-reborn (5.10.26) unstable; urgency=medium
+
+  * New version 5.10.26.
+
+ -- xiepengfei <xiepengfei@uniontech.com>  Sun, 23 Apr 2023 16:20:15 +0800
+
+deepin-movie-reborn (5.10.25) unstable; urgency=medium
+
+  * New version 5.10.25.
+
+ -- xiepengfei <xiepengfei@uniontech.com>  Wed, 12 Apr 2023 10:03:46 +0800
+
+deepin-movie-reborn (5.10.24) unstable; urgency=medium
+
+  * New version 5.10.24.
+
+ -- xiepengfei <xiepengfei@uniontech.com>  Wed, 29 Mar 2023 14:05:32 +0800
+
+deepin-movie-reborn (5.10.23) unstable; urgency=medium
+
+  * New version 5.10.23.
+
+ -- xiepengfei <xiepengfei@uniontech.com>  Thu, 23 Feb 2023 10:21:46 +0800
+
+deepin-movie-reborn (5.10.22) unstable; urgency=medium
+
+  * New version 5.10.22.
+
+ -- xiepengfei <xiepengfei@uniontech.com>  Wed, 09 Feb 2023 09:18:46 +0800
+
+deepin-movie-reborn (5.10.21) unstable; urgency=medium
+
+  * New version 5.10.21.
+
+ -- xiepengfei <xiepengfei@uniontech.com>  Mon, 09 Jan 2023 13:10:20 +0800
+
+deepin-movie-reborn (5.10.19) unstable; urgency=medium
+
+  * New version 5.10.19.
+
+ -- xiepengfei <xiepengfei@uniontech.com>  Tue, 27 Dec 2022 16:49:20 +0800
+
+deepin-movie-reborn (5.10.0) unstable; urgency=medium
+
+  * New version 5.10.0.
+
+ -- fengli <fengli@uniontech.com>  Tue, 13 Jul 2022 10:08:00 +0800
+
+deepin-movie-reborn (3.0.0-1) unstable; urgency=low
+
+  * First release.
+
+ -- Sian Cao <yinshuiboy@gmail.com>  Wed, 15 Mar 2017 16:40:00 +0800
