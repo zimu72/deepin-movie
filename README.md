@@ -21,9 +21,6 @@ sudo apt install debhelper cmake pkg-config \
                 qttools5-dev-tools libgtest-dev googletest \  
                 libqrencode-dev libgmock-dev g++ qt5-default  
 ```
-
-*Might also require this dependency: https://github.com/nikhilm/qhttpserver (uncertain, as AI-modified code required numerous trials and installed multiple dependencies to finally succeed).*
-
 ------
 
 **2. Build Instructions**
