@@ -1,0 +1,3 @@
+misc:Depends=dconf-gsettings-backend | gsettings-backend
+shlibs:Depends=libc6 (>= 2.38), libdtk6core (>= 6.0), libdtk6gui (>= 6.0), libdtk6widget (>= 6.0), libgcc-s1 (>= 3.0), libgl1, libglib2.0-0 (>= 2.12.0), libmpris-qt6 (>= 1.0.0.1-1deepin1), libqrencode4 (>= 3.2.0), libqt6core6 (>= 6.8.0), libqt6dbus6 (>= 6.8.0), libqt6gui6 (>= 6.8.0), libqt6network6 (>= 6.8.0), libqt6opengl6 (>= 6.1.2), libqt6openglwidgets6 (>= 6.1.2), libqt6sql6 (>= 6.1.2), libqt6svg6 (>= 6.6.0), libqt6svgwidgets6 (>= 6.6.0), libqt6widgets6 (>= 6.3.0), libqt6xml6 (>= 6.6.0), libstdc++6 (>= 11), libva-x11-2 (>= 1.0.3), libva2 (>= 1.0.3), libx11-6, libxcb-shape0, libxcb1, libxtst6, qt6-base-private-abi (= 6.8.0)
+misc:Pre-Depends=
