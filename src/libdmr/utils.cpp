@@ -1,0 +1,737 @@
+// Copyright (C) 2020 ~ 2021, Deepin Technology Co., Ltd. <support@deepin.org>
+// SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+#include "utils.h"
+#include <QtDBus>
+#include <QtWidgets>
+#include <QPainterPath>
+#include "dtkcore_config.h"
+
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+#include <QDesktopWidget>
+#else
+#include <QScreen>	
+#endif
+#ifdef DTKCORE_CLASS_DConfigFile
+#include <DConfig>
+#endif
+
+namespace dmr {
+namespace utils {
+using namespace std;
+
+static bool isWayland = false;
+
+void ShowInFileManager(const QString &path)
+{
+    qDebug() << "Entering ShowInFileManager() with path:" << path;
+    if (path.isEmpty() || !QFile::exists(path)) {
+        qDebug() << "Path is empty or file does not exist:" << path << ", returning.";
+        qWarning() << "Invalid path or file does not exist:" << path;
+        return;
+    }
+
+    QUrl url = QUrl::fromLocalFile(QFileInfo(path).dir().absolutePath());
+    qInfo() << "Opening file manager for URL:" << url.toString();
+
+    // Try dde-file-manager
+    if (url.isLocalFile()) {
+        qDebug() << "URL is a local file.";
+        // Start dde-file-manager failed, try nautilus
+        QDBusInterface iface("org.freedesktop.FileManager1",
+                             "/org/freedesktop/FileManager1",
+                             "org.freedesktop.FileManager1",
+                             QDBusConnection::sessionBus());
+        if (iface.isValid()) {
+            qDebug() << "DBus interface is valid, calling ShowItems.";
+            // Convert filepath to URI first.
+            const QStringList uris = { QUrl::fromLocalFile(path).toString() };
+            qInfo() << "Using freedesktop.FileManager to show items:" << uris;
+            QDBusPendingCall call = iface.asyncCall("ShowItems", uris, "");
+            Q_UNUSED(call);
+        } else {
+            qDebug() << "DBus interface is invalid, using QDesktopServices::openUrl as fallback.";
+            qInfo() << "Using desktopService::openUrl as fallback";
+            QDesktopServices::openUrl(QUrl::fromLocalFile(QFileInfo(path).dir().absolutePath()));
+        }
+    } else {
+        qDebug() << "URL is not a local file, directly opening URL.";
+        QDesktopServices::openUrl(url);
+    }
+    qDebug() << "Exiting ShowInFileManager().";
+}
+
+static int min(int v1, int v2, int v3)
+{
+    return std::min(v1, std::min(v2, v3));
+}
+
+static int stringDistance(const QString &s1, const QString &s2)
+{
+    qDebug() << "Entering stringDistance() with s1:" << s1 << ", s2:" << s2;
+    int n = s1.size(), m = s2.size();
+    if (!n || !m) return max(n, m);
+
+    vector<int> dp(static_cast<vector<int>::size_type>(n + 1));
+    for (int i = 0; i < n + 1; i++) dp[static_cast<vector<int>::size_type>(i)] = i;
+//    int pred = 0;
+    int curr = 0;
+
+    for (int i = 0; i < m; i++) {
+        dp[0] = i;
+        int pred = i + 1;
+        for (int j = 0; j < n; j++) {
+            if (s1[j] == s2[i]) {
+                qDebug() << "Characters match at s1[" << j << "] and s2[" << i << "].";
+                curr = dp[static_cast<vector<int>::size_type>(j)];
+            } else {
+                qDebug() << "Characters do not match, calculating cost.";
+                curr = min(dp[static_cast<vector<int>::size_type>(j)], dp[static_cast<vector<int>::size_type>(j + 1)], pred) + 1;
+            }
+            dp[static_cast<vector<int>::size_type>(j)] = pred;
+            pred = curr;
+
+        }
+        dp[static_cast<vector<int>::size_type>(n)] = pred;
+    }
+
+    qDebug() << "Exiting stringDistance() with result:" << curr;
+    return curr;
+}
+
+bool IsNamesSimilar(const QString &s1, const QString &s2)
+{
+    qDebug() << "Comparing names for similarity:" << s1 << "and" << s2;
+    int dist = stringDistance(s1, s2);
+    return (dist >= 0 && dist <= 4); //TODO: check ext.
+}
+
+QFileInfoList FindSimilarFiles(const QFileInfo &fi)
+{
+    qDebug() << "Finding similar files for:" << fi.fileName();
+    QFileInfoList fil;
+
+    QDirIterator it(fi.absolutePath());
+    while (it.hasNext()) {
+        it.next();
+        if (!it.fileInfo().isFile()) {
+            qDebug() << "Skipping non-file entry:" << it.fileInfo().fileName();
+            continue;
+        }
+
+        if (IsNamesSimilar(fi.fileName(), it.fileInfo().fileName())) {
+            fil.append(it.fileInfo());
+            qDebug() << "Found similar file:" << it.fileInfo().fileName();
+        }
+    }
+    qInfo() << "Found" << fil.size() << "similar files";
+    return fil;
+}
+
+bool CompareNames(const QString &fileName1, const QString &fileName2)
+{
+    qDebug() << "Entering CompareNames() with fileName1:" << fileName1 << ", fileName2:" << fileName2;
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    qDebug() << "Compiling for Qt5.";
+    static QRegExp rd("\\d+");
+    int pos = 0;
+    
+    while ((pos = rd.indexIn(fileName1, pos)) != -1) {
+        auto inc = rd.matchedLength();
+        auto id1 = fileName1.midRef(pos, inc);
+
+        auto pos2 = rd.indexIn(fileName2, pos);
+        if (pos == pos2) {
+            qDebug() << "Qt5: Positions match at" << pos << ", comparing IDs.";
+            auto id2 = fileName2.midRef(pos, rd.matchedLength());
+            if (id1 != id2) {
+                qDebug() << "Qt5: IDs differ, performing integer or locale-aware comparison.";
+                bool ok1, ok2;
+                bool v = id1.toInt(&ok1) < id2.toInt(&ok2);
+                if (ok1 && ok2) {
+                    qDebug() << "Qt5: Integer comparison successful, returning:" << v;
+                    return v;
+                }
+                qDebug() << "Qt5: Falling back to locale-aware comparison.";
+                return id1.localeAwareCompare(id2) < 0;
+            }
+        } else {
+            qDebug() << "Qt5: Positions do not match for fileName2.";
+        }
+        pos += inc;
+    }
+    qDebug() << "Qt5: No more matches found, returning locale-aware comparison for full filenames.";
+    return fileName1.localeAwareCompare(fileName2) < 0;
+
+#else
+    qDebug() << "Compiling for Qt6.";
+    static QRegularExpression rd("\\d+");
+    QRegularExpressionMatchIterator i = rd.globalMatch(fileName1);
+    int pos = 0;
+    
+    while (i.hasNext()) {
+        QRegularExpressionMatch match = i.next();
+        pos = match.capturedStart();
+        auto inc = match.capturedLength();
+        auto id1 = fileName1.mid(pos, inc);
+
+        auto match2 = rd.match(fileName2, pos);
+        auto pos2 = match2.capturedStart();
+        if (pos == pos2) {
+            qDebug() << "Qt6: Positions match at" << pos << ", comparing IDs.";
+            auto id2 = fileName2.mid(pos2, match2.capturedLength());
+            if (id1 != id2) {
+                qDebug() << "Qt6: IDs differ, performing integer or locale-aware comparison.";
+                bool ok1, ok2;
+                bool v = id1.toInt(&ok1) < id2.toInt(&ok2);
+                if (ok1 && ok2) {
+                    qDebug() << "Qt6: Integer comparison successful, returning:" << v;
+                    return v;
+                }
+                qDebug() << "Qt6: Falling back to locale-aware comparison.";
+                return id1.localeAwareCompare(id2) < 0;
+            }
+        } else {
+            qDebug() << "Qt6: Positions do not match for fileName2.";
+        }
+        pos += inc;
+    }
+    qDebug() << "Qt6: No more matches found, returning locale-aware comparison for full filenames.";
+    return fileName1.localeAwareCompare(fileName2) < 0;
+#endif
+}
+
+bool first_check_wayland_env()
+{
+    qDebug() << "Checking Wayland environment";
+    auto e = QProcessEnvironment::systemEnvironment();
+    QString XDG_SESSION_TYPE = e.value(QStringLiteral("XDG_SESSION_TYPE"));
+    QString WAYLAND_DISPLAY = e.value(QStringLiteral("WAYLAND_DISPLAY"));
+
+    if (XDG_SESSION_TYPE == QLatin1String("wayland") || WAYLAND_DISPLAY.contains(QLatin1String("wayland"), Qt::CaseInsensitive)) {
+        isWayland = true;
+        qInfo() << "Running in Wayland environment";
+        return true;
+    } else {
+        qInfo() << "Not running in Wayland environment";
+        return false;
+    }
+}
+
+bool check_wayland_env()
+{
+    return isWayland;
+}
+
+#ifdef USE_TEST
+void set_wayland(bool _b)
+{
+    isWayland = _b;
+}
+#endif
+
+// hash the whole file takes amount of time, so just pick some areas to be hashed
+QString FastFileHash(const QFileInfo &fi)
+{
+    qDebug() << "Calculating fast hash for file:" << fi.fileName();
+    auto sz = fi.size();
+    QList<qint64> offsets = {
+        4096,
+        sz - 8192
+    };
+
+    QFile f(fi.absoluteFilePath());
+    if (!f.open(QFile::ReadOnly)) {
+        qWarning() << "Failed to open file for hashing:" << fi.filePath();
+        return QString();
+    }
+
+    if (fi.size() < 8192) {
+        qDebug() << "File size < 8192, calculating full hash";
+        auto bytes = f.readAll();
+        return QString(QCryptographicHash::hash(bytes, QCryptographicHash::Md5).toHex());
+    }
+
+    QByteArray bytes;
+    std::for_each(offsets.begin(), offsets.end(), [&bytes, &f](qint64 v) {
+        f.seek(v);
+        bytes += f.read(4096);
+    });
+    f.close();
+
+    return QString(QCryptographicHash::hash(bytes, QCryptographicHash::Md5).toHex());
+}
+
+// hash the entire file (hope file is small)
+QString FullFileHash(const QFileInfo &fi)
+{
+    qDebug() << "Calculating full hash for file:" << fi.fileName();
+    QFile f(fi.absoluteFilePath());
+    if (!f.open(QFile::ReadOnly)) {
+        qWarning() << "Failed to open file for full hashing:" << fi.filePath();
+        return QString();
+    }
+
+    auto bytes = f.readAll();
+    f.close();
+    return QString(QCryptographicHash::hash(bytes, QCryptographicHash::Md5).toHex());
+}
+
+QPixmap MakeRoundedPixmap(QPixmap pm, qreal rx, qreal ry, int rotation)
+{
+    qDebug() << "Entering MakeRoundedPixmap(pm, rx, ry, rotation) with rotation:" << rotation;
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    QMatrix matrix;
+    matrix.rotate(rotation);
+    pm = pm.transformed(matrix, Qt::SmoothTransformation);
+    qDebug() << "Transformed pixmap using QMatrix for Qt5.";
+#else
+    // QMatrix类被移除了，需要使用QTransform来代替
+    QTransform transform;
+    transform.rotate(rotation);
+    pm = pm.transformed(transform, Qt::SmoothTransformation);
+    qDebug() << "Transformed pixmap using QTransform for Qt6.";
+#endif
+
+    auto dpr = pm.devicePixelRatio();
+    QPixmap dest(pm.size());
+    dest.setDevicePixelRatio(dpr);
+
+    auto scaled_rect = QRectF({0, 0}, QSizeF(dest.size() / dpr));
+    dest.fill(Qt::transparent);
+
+    QPainter p(&dest);
+    p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
+
+    QPainterPath path;
+    path.addRoundedRect(QRect(QPoint(), scaled_rect.size().toSize()), rx, ry);
+    p.setClipPath(path);
+
+//    QTransform transform;
+//    transform.translate(scaled_rect.width()/2, scaled_rect.height()/2);
+//    transform.rotate(rotation);
+//    transform.translate(-scaled_rect.width()/2, -scaled_rect.height()/2);
+//    p.setTransform(transform);
+
+    p.drawPixmap(scaled_rect.toRect(), pm);
+
+    qDebug() << "Exiting MakeRoundedPixmap(pm, rx, ry, rotation).";
+    return dest;
+}
+
+QPixmap MakeRoundedPixmap(QSize sz, QPixmap pm, qreal rx, qreal ry, qint64 time)
+{
+    qDebug() << "Entering MakeRoundedPixmap(sz, pm, rx, ry, time) with size:" << sz << ", time:" << time;
+    int nX = 0;
+    int nY = 0;
+    auto dpr = pm.devicePixelRatio();
+    QPixmap dest(sz);
+    dest.setDevicePixelRatio(dpr);
+    dest.fill(Qt::transparent);
+
+    auto scaled_rect = QRectF({0, 0}, QSizeF(dest.size() / dpr));
+
+    QPainter p(&dest);
+    p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
+
+    p.setPen(QColor(0, 0, 0, 255 / 10));
+    p.drawRoundedRect(scaled_rect, rx, ry);
+
+    QPainterPath path;
+    auto r = scaled_rect.marginsRemoved({1, 1, 1, 1});
+    path.addRoundedRect(r, rx, ry);
+    p.setClipPath(path);
+    nX = (sz.width() - pm.width()) / 2;
+    nY = (sz.height() - pm.height()) / 2;
+    p.drawPixmap(nX, nY, pm);
+
+
+    p.setCompositionMode(QPainter::CompositionMode_SourceOver);
+    QFont ft;
+    ft.setPixelSize(12);
+    ft.setWeight(QFont::Medium);
+    p.setFont(ft);
+
+    auto tm_str = QTime(0, 0, 0).addSecs(static_cast<int>(time)).toString("hh:mm:ss");
+    QRect bounding = QFontMetrics(ft).boundingRect(tm_str);
+    bounding.moveTopLeft({(static_cast<int>(dest.width() / dpr)) - 5 - bounding.width(),
+                          (static_cast<int>(dest.height() / dpr)) - 5 - bounding.height()});
+
+    {
+        qDebug() << "Drawing text for MakeRoundedPixmap(sz, pm, rx, ry, time) - block 1.";
+        QPainterPath pp;
+        pp.addText(bounding.bottomLeft() + QPoint{0, 1}, ft, tm_str);
+        QPen pen(QColor(0, 0, 0, 50));
+        pen.setWidth(2);
+        p.setBrush(QColor(0, 0, 0, 50));
+        p.setPen(pen);
+        p.drawPath(pp);
+    }
+
+    {
+        qDebug() << "Drawing text for MakeRoundedPixmap(sz, pm, rx, ry, time) - block 2.";
+        QPainterPath pp;
+        pp.addText(bounding.bottomLeft(), ft, tm_str);
+        p.fillPath(pp, QColor(Qt::white));
+    }
+
+    qDebug() << "Exiting MakeRoundedPixmap(sz, pm, rx, ry, time).";
+    return dest;
+}
+
+uint32_t InhibitStandby()
+{
+    qDebug() << "Entering InhibitStandby().";
+    QDBusInterface iface("org.freedesktop.ScreenSaver",
+                         "/org/freedesktop/ScreenSaver",
+                         "org.freedesktop.ScreenSaver");
+    QDBusReply<uint32_t> reply = iface.call("Inhibit", "deepin-movie", "playing in fullscreen");
+
+    if (reply.isValid()) {
+        qDebug() << "InhibitStandby() successful, returning cookie:" << reply.value();
+        return reply.value();
+    }
+
+    qInfo() << reply.error().message();
+    return 0;
+}
+
+void UnInhibitStandby(uint32_t cookie)
+{
+    qDebug() << "Entering UnInhibitStandby() with cookie:" << cookie;
+    QDBusInterface iface("org.freedesktop.ScreenSaver",
+                         "/org/freedesktop/ScreenSaver",
+                         "org.freedesktop.ScreenSaver");
+    iface.call("UnInhibit", cookie);
+    qDebug() << "Exiting UnInhibitStandby().";
+}
+
+uint32_t InhibitPower()
+{
+    qDebug() << "Entering InhibitPower().";
+    QDBusInterface iface("org.freedesktop.PowerManagement",
+                         "/org/freedesktop/PowerManagement",
+                         "org.freedesktop.PowerManagement");
+    QDBusReply<uint32_t> reply = iface.call("Inhibit", "deepin-movie", "playing in fullscreen");
+
+    if (reply.isValid()) {
+        qDebug() << "InhibitPower() successful, returning cookie:" << reply.value();
+        return reply.value();
+    }
+
+    qInfo() << reply.error().message();
+    return 0;
+}
+
+void UnInhibitPower(uint32_t cookie)
+{
+    qDebug() << "Entering UnInhibitPower() with cookie:" << cookie;
+    QDBusInterface iface("org.freedesktop.PowerManagement",
+                         "/org/freedesktop/PowerManagement",
+                         "org.freedesktop.PowerManagement");
+    iface.call("UnInhibit", cookie);
+    qDebug() << "Exiting UnInhibitPower().";
+}
+
+void MoveToCenter(QWidget *w)
+{
+    qDebug() << "Moving widget to center";
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    QDesktopWidget *dw = QApplication::desktop();
+    QRect r = dw->availableGeometry(w);
+    qDebug() << "Using QDesktopWidget for Qt5. Available geometry:" << r;
+#else
+    QScreen *screen = QGuiApplication::primaryScreen();
+    if (w && w->screen()) {
+        screen = w->screen();
+        qDebug() << "Using widget's screen for Qt6.";
+    } else {
+        qDebug() << "Using primary screen for Qt6.";
+    }
+    QRect r = screen->availableGeometry();
+    qDebug() << "Using QScreen for Qt6. Available geometry:" << r;
+#endif
+
+    w->move(r.center() - w->rect().center());
+    qDebug() << "Widget moved to position:" << w->pos();
+}
+
+QString Time2str(qint64 seconds)
+{
+    qDebug() << "Converting time to string:" << seconds << "seconds";
+    QTime d(0, 0, 0);
+    if (seconds < DAYSECONDS) {
+        d = d.addSecs(static_cast<int>(seconds));
+        return d.toString("hh:mm:ss");
+    } else {
+        d = d.addSecs(static_cast<int>(seconds));
+        int add = static_cast<int>(seconds / DAYSECONDS) * 24;
+        QString dayOut =  d.toString("hh:mm:ss");
+        dayOut.replace(0, 2, QString::number(add + dayOut.left(2).toInt()));
+        qDebug() << "Time string with days:" << dayOut;
+        return dayOut;
+    }
+}
+
+QString videoIndex2str(int index)
+{
+    qDebug() << "Entering videoIndex2str() with index:" << index;
+    QStringList videoList = {"none", "mpeg1video", "mpeg2video", "h261", "h263", "rv10", "rv20",
+                             "mjpeg", "mjpegb", "ljpeg", "sp5x", "jpegls", "mpeg4", "rawvideo", "msmpeg4v1",
+                             "msmpeg4v2", "msmpeg4v3", "wmv1", "wmv2", "h263p", "h263i", "flv1", "svq1",
+                             "svq3", "dvvideo", "huffyuv", "cyuv", "h264", "indeo3", "vp3", "theora",
+                             "asv1", "asv2", "ffv1", "4xm", "vcr1", "cljr", "mdec", "roq", "interplay_video",
+                             "xan_wc3", "xan_wc4", "rpza", "cinepak", "ws_vqa", "msrle", "msvideo1", "idcin",
+                             "8bps", "smc", "flic", "truemotion1", "vmdvideo", "mszh", "zlib", "qtrle", "tscc",
+                             "ulti", "qdraw", "vixl", "qpeg", "png", "ppm", "pbm", "pgm", "pgmyuv", "pam", "ffvhuff",
+                             "rv30", "rv40", "vc1", "wmv3", "loco", "wnv1", "aasc", "indeo2", "fraps", "truemotion2",
+                             "bmp", "cscd", "mmvideo", "zmbv", "avs", "smackvideo", "nuv", "kmvc", "flashsv",
+                             "cavs", "jpeg2000", "vmnc", "vp5", "vp6", "vp6f", "targa", "dsicinvideo", "tiertexseqvideo",
+                             "tiff", "gif", "dxa", "dnxhd", "thp", "sgi", "c93", "bethsoftvid", "ptx", "txd", "vp6a",
+                             "amv", "vb", "pcx", "sunrast", "indeo4", "indeo5", "mimic", "rl2", "escape124", "dirac", "bfi",
+                             "cmv", "motionpixels", "tgv", "tgq", "tqi", "aura", "aura2", "v210x", "tmv", "v210", "dpx",
+                             "mad", "frwu", "flashsv2", "cdgraphics", "r210", "anm", "binkvideo", "iff_ilbm", "kgv1",
+                             "yop", "vp8", "pictor", "ansi", "a64_multi", "a64_multi5", "r10k", "mxpeg", "lagarith",
+                             "prores", "jv", "dfa", "wmv3image", "vc1image", "utvideo", "bmv_video", "vble", "dxtory",
+                             "v410", "xwd", "cdxl", "xbm", "zerocodec", "mss1", "msa1", "tscc2", "mts2", "cllc", "mss2",
+                             "vp9", "aic", "escape130", "g2m", "webp", "hnm4_video", "hevc", "fic", "alias_pix",
+                             "brender_pix", "paf_video", "exr", "vp7", "sanm", "sgirle", "mvc1", "mvc2", "hqx", "tdsc",
+                             "hq_hqa", "hap", "dds", "dxv", "screenpresso", "rscc", "avs2"
+                            };
+    QStringList PCMList = {"pcm_s16le", "pcm_s16be", "pcm_u16le", "pcm_u16be", "pcm_s8", "pcm_u8", "pcm_mulaw"
+                           "pcm_alaw", "pcm_s32le", "pcm_s32be", "pcm_u32le", "pcm_u32be", "pcm_s24le", "pcm_s24be"
+                           "pcm_u24le", "pcm_u24be", "pcm_s24daud", "pcm_zork", "pcm_s16le_planar", "pcm_dvd"
+                           "pcm_f32be", "pcm_f32le", "pcm_f64be", "pcm_f64le", "pcm_bluray", "pcm_lxf", "s302m"
+                           "pcm_s8_planar", "pcm_s24le_planar", "pcm_s32le_planar", "pcm_s16be_planar"
+                          };
+    QStringList ADPCMList = {"adpcm_ima_qt", "adpcm_ima_wav", "adpcm_ima_dk3", "adpcm_ima_dk4"
+                             "adpcm_ima_ws", "adpcm_ima_smjpeg", "adpcm_ms", "adpcm_4xm", "adpcm_xa", "adpcm_adx"
+                             "adpcm_ea", "adpcm_g726", "adpcm_ct", "adpcm_swf", "adpcm_yamaha", "adpcm_sbpro_4"
+                             "adpcm_sbpro_3", "adpcm_sbpro_2", "adpcm_thp", "adpcm_ima_amv", "adpcm_ea_r1"
+                             "adpcm_ea_r3", "adpcm_ea_r2", "adpcm_ima_ea_sead", "adpcm_ima_ea_eacs", "adpcm_ea_xas"
+                             "adpcm_ea_maxis_xa", "adpcm_ima_iss", "adpcm_g722", "adpcm_ima_apc", "adpcm_vima"
+                            };
+    QStringList AMRList = {"amr_nb", "amr_wb"};
+    QStringList realAudioList = {"ra_144", "ra_288" };
+    QMap<int, QString> codecMap;
+    for (int i = 0; i < videoList.size(); i++) {
+        codecMap.insert(i, videoList[i]);
+    }
+    for (int i = 0; i < PCMList.size(); i++) {
+        codecMap.insert(i + 65536, PCMList[i]);
+    }
+    for (int i = 0; i < ADPCMList.size(); i++) {
+        codecMap.insert(i + 69632, ADPCMList[i]);
+    }
+    codecMap.insert(73728, "amr_nb");
+    codecMap.insert(73729, "amr_wb");
+    codecMap.insert(77824, "ra_144");
+    codecMap.insert(77825, "ra_288");
+    QString aa = codecMap[index];
+    qDebug() << "Exiting videoIndex2str() with result:" << aa;
+    return aa;
+}
+
+QString audioIndex2str(int index)
+{
+    qDebug() << "Entering audioIndex2str() with index:" << index;
+    QStringList audioList = {"mp2", "mp3", "aac", "ac3", "dts", "vorbis", "dvaudio", "wmav1", "wmav2", "mace3", "mace6",
+                             "vmdaudio", "flac", "mp3adu", "mp3on4", "shorten", "alac", "westwood_snd1", "gsm", "qdm2",
+                             "cook", "truespeech", "tta", "smackaudio", "qcelp", "wavpack", "dsicinaudio", "imc",
+                             "musepack7", "mlp", "gsm_ms", "atrac3", "ape", "nellymoser", "musepack8", "speex", "wmavoice",
+                             "wmapro", "wmalossless", "atrac3p", "eac3", "sipr", "mp1", "twinvq", "truehd", "mp4als",
+                             "atrac1", "binkaudio_rdft", "binkaudio_dct", "aac_latm", "qdmc", "celt", "g723_1", "g729",
+                             "8svx_exp", "8svx_fib", "bmv_audio", "ralf", "iac", "ilbc", "opus", "comfort_noise", "tak",
+                             "metasound", "paf_audio", "on2avc", "dss_sp", "codec2", "ffwavesynth", "sonic", "sonic_ls",
+                             "evrc", "smv", "dsd_lsbf", "dsd_msbf", "dsd_lsbf_planar", "dsd_msbf_planar", "4gv",
+                             "interplay_acm", "xma1", "xma2", "dst", "atrac3al", "atrac3pal", "dolby_e", "aptx", "aptx_hd",
+                             "sbc", "atrac9"
+                            };
+    QMap<int, QString> codecMap;
+    for (int i = 0; i < audioList.size(); i++) {
+        codecMap.insert(i + 86016, audioList[i]);
+    }
+    QString aa = codecMap[index];
+    qDebug() << "Exiting audioIndex2str() with result:" << aa;
+    return aa;
+}
+
+///not used///
+/*QString subtitleIndex2str(int index)
+{
+    QStringList subtitleList1 = {"dvd_subtitle", "dvb_subtitle", "text", "xsub", "ssa",
+                                 "mov_text", "hdmv_pgs_subtitle", "dvb_teletext", "srt"
+                                };
+    QStringList subtitleList2 = {"microdvd", "eia_608", "jacosub", "sami", "realtext", "stl", "subviewer1", "subviewer",
+                                 "subrip", "webvtt", "mpl2", "vplayer", "pjs", "ass", "hdmv_text_subtitle", "ttml"
+                                };
+    QMap<int, QString> codecMap;
+    for (int i = 0; i < subtitleList1.size(); i++) {
+        codecMap.insert(i + 94208, subtitleList1[i]);
+    }
+    for (int i = 0; i < subtitleList2.size(); i++) {
+        codecMap.insert(i + 96256, subtitleList2[i]);
+    }
+    return codecMap[index];
+}*/
+
+//cppcheck 单元测试在用
+bool ValidateScreenshotPath(const QString &path)
+{
+    qDebug() << "Entering ValidateScreenshotPath() with path:" << path;
+    auto name = path.trimmed();
+    qDebug() << "Trimmed path:" << name;
+    if (name.isEmpty()) {
+        qDebug() << "Path is empty, returning false.";
+        return false;
+    }
+
+    if (name.size() && name[0] == '~') {
+        name.replace(0, 1, QDir::homePath());
+        qDebug() << "Replaced ~ with home path. New path:" << name;
+    }
+
+    QFileInfo fi(name);
+    if (fi.exists()) {
+        qDebug() << "File/path exists.";
+        if (!fi.isDir()) {
+            qDebug() << "Path is not a directory, returning false.";
+            return false;
+        }
+
+        if (!fi.isReadable() || !fi.isWritable()) {
+            qDebug() << "Path is not readable or writable, returning false.";
+            return false;
+        }
+    } else {
+        qDebug() << "File/path does not exist.";
+    }
+
+    qDebug() << "Exiting ValidateScreenshotPath() with true.";
+    return true;
+}
+
+QImage LoadHiDPIImage(const QString &filename)
+{
+    qDebug() << "Entering LoadHiDPIImage() with filename:" << filename;
+    QImageReader reader(filename);
+    reader.setScaledSize(reader.size() * qApp->devicePixelRatio());
+    auto img =  reader.read();
+    img.setDevicePixelRatio(qApp->devicePixelRatio());
+    qDebug() << "Exiting LoadHiDPIImage(). Image size:" << img.size() << ", device pixel ratio:" << img.devicePixelRatio();
+    return img;
+}
+
+QPixmap LoadHiDPIPixmap(const QString &filename)
+{
+    qDebug() << "Entering LoadHiDPIPixmap() with filename:" << filename;
+    QPixmap pixmap = QPixmap::fromImage(LoadHiDPIImage(filename));
+    qDebug() << "Exiting LoadHiDPIPixmap(). Pixmap size:" << pixmap.size();
+    return pixmap;
+}
+
+QString ElideText(const QString &text, const QSize &size,
+                  QTextOption::WrapMode wordWrap, const QFont &font,
+                  Qt::TextElideMode mode, int lineHeight, int lastLineWidth)
+{
+    qDebug() << "Entering ElideText() with text:" << text << ", size:" << size << ", wordWrap:" << wordWrap << ", font:" << font.family() << ", mode:" << mode;
+    qDebug() << "lineHeight:" << lineHeight << ", lastLineWidth:" << lastLineWidth;
+    QTextLayout textLayout(text);
+    QString str;
+    QFontMetrics fontMetrics(font);
+
+    textLayout.setFont(font);
+    const_cast<QTextOption *>(&textLayout.textOption())->setWrapMode(wordWrap);
+
+    textLayout.beginLayout();
+
+    QTextLine line = textLayout.createLine();
+
+    while (line.isValid()) {
+        int height = 0;
+        height += lineHeight;
+
+        if (height + lineHeight >= size.height()) {
+            str += fontMetrics.elidedText(text.mid(line.textStart() + line.textLength() + 1),
+                                          mode, lastLineWidth);
+
+            break;
+        }
+
+        line.setLineWidth(size.width());
+
+        const QString &tmp_str = text.mid(line.textStart(), line.textLength());
+
+        if (tmp_str.indexOf('\n'))
+            height += lineHeight;
+
+        str += tmp_str;
+
+        line = textLayout.createLine();
+
+        if (line.isValid())
+            str.append("\n");
+    }
+
+    textLayout.endLayout();
+
+    if (textLayout.lineCount() == 1) {
+        str = fontMetrics.elidedText(str, mode, lastLineWidth);
+    }
+
+    qDebug() << "Exiting ElideText() with result:" << str;
+    return str;
+}
+
+void getPlayProperty(const char *path, QMap<QString, QString> *&proMap)
+{
+    qDebug() << "Getting play properties from path:" << path;
+    Q_UNUSED(path);
+#ifdef DTKCORE_CLASS_DConfigFile
+    Dtk::Core::DConfig *dconfig = Dtk::Core::DConfig::create("org.deepin.movie","org.deepin.movie.minimode");
+    if(dconfig && dconfig->isValid() && dconfig->keyList().contains("playConfigHandling")){
+        QString compositedHandling = dconfig->value("playConfigHandling").toString();
+        qInfo() << "Found play config handling:" << compositedHandling;
+        QStringList confList = compositedHandling.split(";", Qt::SkipEmptyParts);
+        if (!confList.isEmpty()) {
+            foreach (QString item, confList) {
+                QStringList confItem = item.split("=", Qt::SkipEmptyParts);
+                if (confItem.size() == 2) {
+                    proMap->insert(confItem.first(), confItem.last());
+                    qDebug() << "Added config:" << confItem.first() << "=" << confItem.last();
+                }
+            }
+        }
+    }
+#else
+    QFileInfo fi(path);
+    if ((fi.exists() && fi.isFile()) && fi.isReadable()) {
+        QFile file(path);
+        if (file.open(QIODevice::ReadOnly) | QIODevice::Text) {
+            QByteArray t;
+            int index = 0;
+            while (!file.atEnd()) {
+                t = file.readLine();
+                QList<QByteArray> list = t.split('=');
+                index++;
+                if (2 == list.size()) {
+                    QString temp = list.back();
+                    temp = temp.mid(0, temp.length() - 1);//去除/n
+                    proMap->insert(list.first(), temp);
+                    qDebug() << "Added property:" << list.first() << "=" << temp;
+                } else {
+                    qWarning() << "Invalid config line:" << index << t;
+                    continue;
+                }
+            }
+        }
+        file.close();
+    } else {
+        qWarning() << "Invalid file path or permissions:" << path;
+    }
+#endif
+}
+}
+}
